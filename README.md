@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="markitdown-mcp-banner.png" alt="MarkItDown-MCP Banner" width="100%">
+</p>
+
 # MarkItDown-CN
 
 [![PyPI](https://img.shields.io/pypi/v/markitdown.svg)](https://pypi.org/project/markitdown/)
