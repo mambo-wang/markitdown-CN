@@ -28,6 +28,8 @@ markitdown-mcp/
 │   ├── markitdown-mcp/          # MCP Server — AI 助手集成入口
 │   ├── markitdown-ocr/          # OCR 插件 — 文档内嵌图片的文字提取
 │   └── markitdown-sample-plugin/# 插件开发示例
+├── skills/
+│   └── markitdown-convert/      # AI 助手 Skill — 文档转 Markdown 工作流
 ├── openspec/                    # 设计文档与规范
 │   └── changes/assistant-driven-ocr/
 ├── repowiki/                    # 项目 Wiki（模块级技术文档）
@@ -38,13 +40,17 @@ markitdown-mcp/
 
 传统方案需要单独配置 OpenAI 等外部 LLM 来驱动 OCR 和图片描述。本项目的 **extract_only** 模式彻底消除了这一依赖：
 
-```
-传统流程:  文档 → MarkItDown → 调用外部 LLM → Markdown
-AI 助手流程: 文档 → MarkItDown (extract_only) → 文本骨架 + 图片文件
-                                                      ↓
-                                              AI 助手读取图片
-                                                      ↓
-                                              最终 Markdown
+```mermaid
+graph LR
+    subgraph 传统流程
+        A1[文档] --> A2[MarkItDown] --> A3[调用外部 LLM] --> A4[Markdown]
+    end
+
+    subgraph AI 助手流程
+        B1[文档] --> B2["MarkItDown (extract_only)"] --> B3[文本骨架 + 图片文件]
+        B3 --> B4[AI 助手读取图片]
+        B4 --> B5[最终 Markdown]
+    end
 ```
 
 **工作原理：**
@@ -72,14 +78,6 @@ pip install -e packages/markitdown
 # 安装 MCP Server
 pip install -e packages/markitdown-mcp
 
-# 安装 OCR 插件（可选）
-pip install -e packages/markitdown-ocr
-```
-
-### 使用 pip 安装（PyPI 原版）
-
-```bash
-pip install 'markitdown[all]'
 ```
 
 ## 使用方法
@@ -117,14 +115,14 @@ result = md.convert("report_with_images.pdf")
 
 ### MCP Server 配置
 
-MCP Server 提供两个工具：
+MCP Server 提供三个工具：
 
 | 工具 | 说明 |
 |------|------|
 | `convert_to_markdown(uri)` | 将 URI 资源转换为 Markdown（原有工具） |
 | `analyze_document(path)` | 提取文本骨架 + 图片清单（新增，用于 AI 助手协作） |
+| `ocr_image(path, prompt)` | 对单张图片进行视觉分析并返回描述文本（新增） |
 
-#### STDIO 模式（推荐）
 
 在 QoderWork 的 Connectors 设置中，添加自定义 MCP Server，粘贴以下配置：
 
@@ -141,45 +139,20 @@ MCP Server 提供两个工具：
 
 > 将 `command` 路径替换为你的 Python 解释器路径。
 
-#### HTTP 模式
+## AI 助手 Skill
+
+项目提供 `markitdown-convert` Skill，为 AI 助手（QoderWork / CodeBuddy / Qoder）提供标准化的文档转 Markdown 工作流，涵盖格式分流、图片过滤、OCR 提取、结果组装等完整步骤。
+
+### 安装 Skill
+
+将 `skills/markitdown-convert` 目录拷贝到你项目的 skill 目录下：
 
 ```bash
-# 启动 SSE / Streamable HTTP 服务器
-python -m markitdown_mcp --http --host 127.0.0.1 --port 3001
+# CodeBuddy
+cp -r skills/markitdown-convert .codebuddy/skills/
 ```
 
-### 环境变量
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `MARKITDOWN_ENABLE_PLUGINS` | 启用插件 | `false` |
-
-## 可选依赖
-
-markitdown 支持按需安装格式依赖：
-
-```bash
-pip install 'markitdown[pdf]'              # 仅 PDF
-pip install 'markitdown[docx, pptx]'       # Word + PPT
-pip install 'markitdown[az-doc-intel]'     # Azure Document Intelligence
-pip install 'markitdown[az-content-understanding]'  # Azure Content Understanding
-```
-
-完整列表：`all`, `pptx`, `docx`, `xlsx`, `xls`, `pdf`, `outlook`, `audio-transcription`, `youtube-transcription`, `az-doc-intel`, `az-content-understanding`
-
-## 插件系统
-
-markitdown 通过 Python `entry_points` 机制支持第三方插件。OCR 插件 `markitdown-ocr` 为 PDF、DOCX、PPTX、XLSX 中嵌入的图片提供 OCR 支持。
-
-```bash
-# 列出已安装的插件
-markitdown --list-plugins
-
-# 启用插件进行转换
-markitdown --use-plugins document.pdf
-```
-
-开发自定义插件请参考 `packages/markitdown-sample-plugin`。
+安装后，当你对 AI 助手说"把这个文件转成 markdown"时，助手会自动匹配该 Skill 并按标准流程执行。
 
 ## 版本信息
 
@@ -193,6 +166,7 @@ markitdown --use-plugins document.pdf
 ## 文档
 
 - [项目介绍与使用指南](PROJECT_GUIDE.md) — AI 助手驱动方案的设计思路、实现过程和使用方法
+- [skills/markitdown-convert/](skills/markitdown-convert/) — AI 助手 Skill，标准化的文档转 Markdown 工作流
 - [repowiki/](repowiki/) — 各模块的技术文档（Core Engine、MCP Server、OCR Plugin 等）
 - [openspec/](openspec/changes/assistant-driven-ocr/) — extract_only 模式的设计提案与规范
 

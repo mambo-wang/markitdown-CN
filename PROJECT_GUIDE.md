@@ -121,7 +121,7 @@ MCP Server 在启动时创建临时根目录，每个文档的子目录基于文
 
 | 产出 | 说明 |
 |------|------|
-| **assistant-orchestration Skill** | 234 行的 AI 助手编排技能，定义两阶段工作流、智能图片选择策略、批处理方案 |
+| **markitdown-convert Skill** | AI 助手编排技能，定义格式分流、图片过滤、OCR 提取、结果组装的完整工作流（位于 `skills/markitdown-convert/`） |
 | **repowiki/** | 10 篇模块级技术文档，覆盖核心引擎、转换器、MCP Server、OCR 插件等 |
 | **openspec/ 设计文档** | 完整的提案、设计、规范和任务清单 |
 
@@ -142,7 +142,10 @@ cd markitdown-mcp
 pip install -e packages/markitdown
 pip install -e packages/markitdown-mcp
 
-# 4. 验证安装
+# 4. 安装 OCR 插件（可选）
+pip install -e packages/markitdown-ocr
+
+# 5. 验证安装
 python -c "from markitdown import MarkItDown; print('OK')"
 python -c "from markitdown_mcp.__main__ import mcp; print('MCP OK')"
 ```
@@ -166,7 +169,7 @@ python -c "from markitdown_mcp.__main__ import mcp; print('MCP OK')"
 }
 ```
 
-4. 保存后，`convert_to_markdown` 和 `analyze_document` 两个工具将自动注册
+4. 保存后，`convert_to_markdown`、`analyze_document` 和 `ocr_image` 三个工具将自动注册
 
 ### 4.3 使用 AI 助手分析文档
 
@@ -220,6 +223,20 @@ markitdown --use-plugins scanned_document.pdf -o output.md
 MARKITDOWN_ENABLE_PLUGINS=true markitdown document.pdf
 ```
 
+### 4.6 安装 AI 助手 Skill
+
+项目提供 `markitdown-convert` Skill（位于 `skills/markitdown-convert/`），为 AI 助手提供标准化的文档转 Markdown 工作流。将其拷贝到你项目的 skill 目录即可使用：
+
+```bash
+# QoderWork
+cp -r skills/markitdown-convert ~/.qoderworkcn/skills/
+
+# CodeBuddy / Qoder
+cp -r skills/markitdown-convert .codebuddy/skills/
+```
+
+安装后，当你对 AI 助手说"把这个文件转成 markdown"时，助手会自动匹配该 Skill 并按标准流程执行。Skill 定义了完整的五步工作流：格式分流 → 文档类型判断 → 图片过滤与 OCR → 组装 Markdown → 验证输出。
+
 ## 五、技术栈
 
 | 组件 | 技术 |
@@ -236,7 +253,7 @@ MARKITDOWN_ENABLE_PLUGINS=true markitdown document.pdf
 | 方面 | 原版 markitdown | markitdown-mcp |
 |------|----------------|---------------|
 | 图片识别 | 需要外部 LLM（OpenAI GPT-4o 等） | AI 助手自身视觉能力 |
-| MCP 工具 | 仅 `convert_to_markdown` | 新增 `analyze_document` |
+| MCP 工具 | 仅 `convert_to_markdown` | 新增 `analyze_document` + `ocr_image` |
 | extract_only 模式 | 无 | 核心新增，跳过 LLM 调用 |
 | OCR 插件 | 依赖外部 LLM client | 同样支持 extract_only |
 | 编排技能 | 无 | 提供 assistant-orchestration Skill |
