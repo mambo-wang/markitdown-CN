@@ -27,29 +27,29 @@
 
 传统的 MCP 工具调用，所有数据都在 JSON 消息中传递。对于图片这种大文件，base64 编码会显著增加传输开销。我们借鉴了 CodeWiki MCP 的设计模式——**文件侧信道（File Side-Channel）**：
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│                      MCP 协议通道                            │
-│                                                              │
-│  AI 助手 ──调用──→ analyze_document("/path/to/file.pdf")     │
-│                                                              │
-│  MCP Server ──返回──→ JSON {                                 │
-│    text_skeleton: "文档文本... ![image](/tmp/img_1.png) ...", │
-│    images: [{path: "/tmp/img_1.png", size: "1920x1080", ...}]│
-│  }                                                           │
-└──────────────────────────────────────────────────────────────┘
-                                                              │
-                                                              ▼
-┌──────────────────────────────────────────────────────────────┐
-│                    文件侧信道（磁盘）                         │
-│                                                              │
-│  /tmp/markitdown_mcp_xxx/                                    │
-│  └── a1b2c3d4/                                               │
-│      └── images/                                             │
-│          ├── img_1.png    ← AI 助手通过 Read 工具直接读取     │
-│          ├── img_2.jpg                                       │
-│          └── img_3.tiff                                      │
-└──────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant Assistant as AI 助手
+    participant MCP as MCP Server<br/>(markitdown-mcp)
+    participant Disk as 文件侧信道<br/>(磁盘临时目录)
+
+    Note over Assistant,Disk: Phase 1 — MCP 协议通道（轻量元数据）
+
+    Assistant->>MCP: analyze_document("/path/to/file.pdf")
+    MCP->>MCP: MarkItDown(extract_only=True)
+    MCP->>Disk: 提取图片到临时目录<br/>/tmp/markitdown_mcp_xxx/a1b2c3d4/images/
+    MCP-->>Assistant: 返回 JSON<br/>text_skeleton: "文档文本... ![image](/tmp/img_1.png) ..."<br/>images: [{path, width, height, size_bytes, position}]
+
+    Note over Assistant,Disk: Phase 2 — 文件侧信道（实际图片数据）
+
+    loop 逐张处理图片
+        Assistant->>Disk: Read 工具读取图片文件
+        Disk-->>Assistant: 图片二进制数据
+        Assistant->>Assistant: 视觉能力识别内容<br/>(OCR / 图表描述 / 内容分析)
+    end
+
+    Assistant->>Assistant: 将识别结果替换回<br/>文本骨架中的占位符
+    Note over Assistant: 输出完整 Markdown 文档
 ```
 
 MCP 只传递轻量级的元数据（路径、尺寸），实际的图片数据通过磁盘文件传递。AI 助手通过文件系统的 Read 工具直接读取图片，用自己的视觉能力进行分析。
